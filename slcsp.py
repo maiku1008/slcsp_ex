@@ -1,3 +1,4 @@
+# Run with python slcsp.py
 import csv
 
 METAL_LEVEL = 'Silver'
@@ -18,9 +19,7 @@ def get_zipcodes():
     return zipcodes
 
 
-# Parse zipcode in zips.csv to get state
-# this may present an issue as the zip codes may not be unique
-# In which case we need to use some fuckery with the rate area
+# Parse zipcode in zips.csv to get state and rate area
 def get_state(zipcode):
     state = ''
     with open(ZIPS_CSV, 'r') as zipsfile:
@@ -28,39 +27,48 @@ def get_state(zipcode):
         for row in reader:
             if zipcode in row['zipcode']:
                 state = row['state']
+                rate_area = row['rate_area']
                 break
 
-    return state
+    return state, rate_area
 
 
 # Find list of relevant rates
-def get_rates(state):
+def get_rates(state, rate_area):
     rates = []
     with open(PLANS_CSV, 'r') as plansfile:
         reader = csv.DictReader(plansfile)
         for row in reader:
-            if state in row['state'] and METAL_LEVEL in row['metal_level']:
-                rates.append(row['rate'])
+            if METAL_LEVEL in row['metal_level']:
+                if state in row['state'] and rate_area in row['rate_area']:
+                    rates.append(row['rate'])
+
     return rates
 
 
-# Get second smallest value in rate_list
+# Get second smallest value in rates list
 def get_second_lowest_value_in_list(rates):
-    rates.sort()
-    return '290.94'
+    rates_set = set(rates)
+    if len(rates_set) == 1:
+        return sorted(rates_set)[0]
+    elif len(rates_set) < 1:
+        return ''
+    else:
+        return sorted(rates_set)[1]
 
 
 def main():
     with open(SLCSP_COMPLETED_CSV, 'w') as target:
         writer = csv.writer(target)
+        writer.writerow(['zipcode', 'rate'])
 
         zipcodes = get_zipcodes()
         for zipcode in zipcodes:
-            state = get_state(zipcode)  # might not work as expected
-            rates = get_rates(state)
+            state, rate_area = get_state(zipcode)
+            rates = get_rates(state, rate_area)
             rate = get_second_lowest_value_in_list(rates)
-            print(zipcode + ',' + rate)
-            # writer.writerow(['zipcode', 'rate'])
+            # print(zipcode + ', ' + rate)
+            writer.writerow([zipcode, rate])
 
 
 if __name__ == '__main__':
